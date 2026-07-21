@@ -5,10 +5,14 @@ namespace App\Providers;
 use App\Domain\Cart\CartRepository;
 use App\Domain\Catalog\ProductRepository;
 use App\Domain\Checkout\Promotion;
-use App\Domain\Checkout\ThresholdPromotion;
-use App\Infrastructure\Cart\SessionCartRepository;
-use App\Infrastructure\Catalog\CuratedProductRepository;
+use App\Infrastructure\Checkout\DatabasePromotion;
+use App\Infrastructure\Cart\DatabaseCartRepository;
+// use App\Infrastructure\Cart\SessionCartRepository;
+use App\Infrastructure\Catalog\DatabaseProductRepository;
+use App\Listeners\ProvisionOwnerShopAfterVerification;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Routing\UrlGenerator;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -18,9 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(ProductRepository::class, CuratedProductRepository::class);
-        $this->app->bind(CartRepository::class, SessionCartRepository::class);
-        $this->app->singleton(Promotion::class, fn () => new ThresholdPromotion(30000, 10));
+        $this->app->bind(ProductRepository::class, DatabaseProductRepository::class);
+        // $this->app->bind(CartRepository::class, SessionCartRepository::class);
+        $this->app->bind(CartRepository::class, DatabaseCartRepository::class);
+        $this->app->singleton(DatabasePromotion::class);
+        $this->app->singleton(Promotion::class, fn ($app) => $app->make(DatabasePromotion::class));
     }
 
     /**
@@ -28,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(UrlGenerator $url): void
     {
+        Event::listen(Verified::class, ProvisionOwnerShopAfterVerification::class);
+
         if ($this->app->environment('production')) {
             $url->forceScheme('https');
         }

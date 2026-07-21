@@ -1,0 +1,67 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: noma-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: noma
+      RABBITMQ_DEFAULT_PASS: noma
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - noma-internal
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: noma-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - noma-internal
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/queue-worker/Dockerfile
+    container_name: noma-queue-worker
+    depends_on:
+      - rabbitmq
+      - mailpit
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./:/app
+    networks:
+      - noma-internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      APP_ENV: local
+      APP_URL: http://localhost:8083
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
+      LANDLORD_DB_HOST: host.docker.internal
+      LANDLORD_DB_PORT: 5432
+      TENANT_DB_HOST: host.docker.internal
+      TENANT_DB_PORT: 5432
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: noma
+      RABBITMQ_PASSWORD: noma
+      RABBITMQ_VHOST: /
+      RABBITMQ_QUEUE: emails
+      RABBITMQ_WORKER: default
+    command: ["php", "artisan", "rabbitmq:consume", "rabbitmq", "--queue=emails"]
+
+volumes:
+  rabbitmq-data:
+networks:
+  noma-internal:
+    driver: bridge
+    

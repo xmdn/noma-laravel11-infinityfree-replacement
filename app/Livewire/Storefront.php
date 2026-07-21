@@ -7,6 +7,7 @@ use App\Application\Cart\ChangeCartQuantity;
 use App\Application\Cart\GetCartSummary;
 use App\Application\Catalog\BrowseProducts;
 use App\Domain\Cart\CartRepository;
+use App\Models\Shop;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -29,10 +30,37 @@ final class Storefront extends Component
     /** @var list<string> */
     public array $favorites = [];
 
+    public string $shopId = '';
+
+    public string $shopName = 'NOMA';
+
+    public string $shopSlug = '';
+
+    public function mount(): void
+    {
+        $shop = Shop::current();
+        abort_unless($shop instanceof Shop, 404);
+
+        $this->shopId = $shop->id;
+        $this->shopName = $shop->name;
+        $this->shopSlug = $shop->slug;
+    }
+
     #[Computed]
     public function products(): array
     {
-        return app(BrowseProducts::class)->handle($this->query, $this->category, $this->sort);
+        return app(BrowseProducts::class)->handle($this->query, $this->category, $this->sort, $this->shopId);
+    }
+
+    #[Computed]
+    public function categories(): array
+    {
+        return collect($this->products)
+            ->pluck('category')
+            ->unique()
+            ->prepend('All')
+            ->values()
+            ->all();
     }
 
     #[Computed]
@@ -65,6 +93,15 @@ final class Storefront extends Component
     {
         app(CartRepository::class)->clear();
         unset($this->cart);
+    }
+
+    public function beginCheckout()
+    {
+        if ($this->cart['count'] === 0) {
+            return null;
+        }
+
+        return redirect()->route('shops.checkout', ['shop' => $this->shopSlug]);
     }
 
     public function toggleFavorite(string $productId): void

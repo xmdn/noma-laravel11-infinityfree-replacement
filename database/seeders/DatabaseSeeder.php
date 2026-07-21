@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Identity\SystemRole;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,11 +17,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(RolePermissionSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $email = env('NOMA_ADMIN_EMAIL');
+        $password = env('NOMA_ADMIN_PASSWORD');
+
+        if ($email && $password) {
+            $administrator = User::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => env('NOMA_ADMIN_NAME', 'NOMA Administrator'),
+                    'password' => $password,
+                    'email_verified_at' => now(),
+                ],
+            );
+            $administrator->roles()->syncWithoutDetaching(
+                [Role::query()->where('slug', SystemRole::Administrator->value)->firstOrFail()->getKey()],
+            );
+        }
     }
 }

@@ -10,7 +10,7 @@ final readonly class Product
     public function __construct(
         public string $id,
         public string $name,
-        public Category $category,
+        public string $category,
         public string $description,
         public Money $price,
         public string $image,

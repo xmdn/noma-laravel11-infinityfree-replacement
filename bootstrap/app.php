@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\IdentifyShopTenant;
+use App\Http\Middleware\IdentifyShopTenantIfPresent;
+use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RequireRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->appendToGroup('web', IdentifyShopTenantIfPresent::class);
+
+        $middleware->alias([
+            'permission' => RequirePermission::class,
+            'role' => RequireRole::class,
+            'shop.tenant' => IdentifyShopTenant::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -5,7 +5,7 @@ namespace App\Domain\Catalog;
 interface ProductRepository
 {
     /** @return list<Product> */
-    public function all(): array;
+    public function all(?string $shopId = null): array;
 
     public function find(string $id): ?Product;
 

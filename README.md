@@ -1,6 +1,6 @@
 # NOMA Storefront
 
-A production-minded Laravel 13 + Livewire 4 commerce experience. The customer-facing application is a curated design store; SOLID and design patterns live in the implementation rather than the content.
+A production-minded Laravel 11.51 + Livewire 4.3 commerce experience. The customer-facing application is a curated design store; SOLID and design patterns live in the implementation rather than the content.
 
 ## Architecture
 
@@ -11,6 +11,8 @@ A production-minded Laravel 13 + Livewire 4 commerce experience. The customer-fa
 
 Key decisions include integer minor-unit money, repository ports, a promotion strategy, a justified Template Method base class for conditional promotions, server-side cart authority, focused application services, PHP enums, and container-based composition.
 
+The identity foundation includes customer registration and login, tenant roles and permissions, a protected account area, and administrator-controlled role assignment. See `PROJECT_SCOPE.md` for the multi-tenant direction.
+
 ## Run
 
 ```bash
@@ -19,6 +21,27 @@ npm install
 npm run build
 php artisan serve
 ```
+
+Run migrations and seed system roles before accepting registrations:
+
+```bash
+php artisan migrate --force
+php artisan db:seed --force
+```
+
+For local queue-backed email delivery, start RabbitMQ, Mailpit, and the worker:
+
+```bash
+docker compose up -d rabbitmq mailpit queue-worker
+```
+
+Mailpit inbox:
+
+```text
+http://localhost:8025
+```
+
+To create or update the initial tenant administrator, set `NOMA_ADMIN_NAME`, `NOMA_ADMIN_EMAIL`, and `NOMA_ADMIN_PASSWORD` in the deployment environment before seeding. Do not commit those values.
 
 ## Quality
 

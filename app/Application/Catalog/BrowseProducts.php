@@ -10,13 +10,13 @@ final readonly class BrowseProducts
     public function __construct(private ProductRepository $products) {}
 
     /** @return list<array<string, mixed>> */
-    public function handle(string $query, string $category, string $sort): array
+    public function handle(string $query, string $category, string $sort, ?string $shopId = null): array
     {
-        return collect($this->products->all())
-            ->when($category !== 'All', fn ($items) => $items->where('category.value', $category))
+        return collect($this->products->all($shopId))
+            ->when($category !== 'All', fn ($items) => $items->where('category', $category))
             ->when($query !== '', fn ($items) => $items->filter(
                 fn (Product $product) => str_contains(
-                    strtolower($product->name.' '.$product->description.' '.$product->category->value),
+                    strtolower($product->name.' '.$product->description.' '.$product->category),
                     strtolower(trim($query)),
                 ),
             ))
@@ -34,7 +34,7 @@ final readonly class BrowseProducts
         return [
             'id' => $product->id,
             'name' => $product->name,
-            'category' => $product->category->value,
+            'category' => $product->category,
             'description' => $product->description,
             'price' => $product->price->formatted(),
             'image' => $product->image,

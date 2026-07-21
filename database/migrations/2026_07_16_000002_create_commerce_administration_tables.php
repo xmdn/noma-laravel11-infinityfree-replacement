@@ -35,19 +35,10 @@ return new class extends Migration
             $table->primary(['role_id', 'user_id']);
         });
 
-        Schema::create('customers', function (Blueprint $table): void {
-            $table->ulid('id')->primary();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->string('phone')->nullable();
-            $table->string('status')->default('active');
-            $table->timestampsTz();
-        });
-
         Schema::create('orders', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->string('number')->unique();
-            $table->foreignUlid('customer_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('status')->index();
             $table->char('currency', 3);
             $table->unsignedBigInteger('subtotal_minor');
@@ -104,7 +95,6 @@ return new class extends Migration
         Schema::dropIfExists('order_status_history');
         Schema::dropIfExists('order_items');
         Schema::dropIfExists('orders');
-        Schema::dropIfExists('customers');
         Schema::dropIfExists('role_user');
         Schema::dropIfExists('permission_role');
         Schema::dropIfExists('permissions');
