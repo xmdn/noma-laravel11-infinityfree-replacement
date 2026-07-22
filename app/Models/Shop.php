@@ -71,6 +71,10 @@ class Shop extends Model implements IsTenant
 
     public function publicUrl(?string $path = null): string
     {
+        if (config('noma.shop_url_mode') === 'path') {
+            return rtrim(route('shops.show', ['shop' => $this->slug]), '/').'/'.ltrim((string) $path, '/');
+        }
+
         $baseUrl = rtrim(config('app.url'), '/');
         $port = parse_url($baseUrl, PHP_URL_PORT);
         $scheme = parse_url($baseUrl, PHP_URL_SCHEME) ?: 'http';

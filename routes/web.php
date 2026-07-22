@@ -28,49 +28,57 @@ use Illuminate\Support\Facades\Route;
 
 $centralHost = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
 
-Route::domain('{shop}.'.$centralHost)
-    ->middleware('shop.tenant')
-    ->group(function (): void {
-        Route::get('/', Storefront::class)->name('shops.show');
-        Route::get('/checkout', function (string $shop) {
-            if (! auth()->check()) {
-                return redirect()->route('shops.checkout.login', ['shop' => $shop]);
+$shopRoutes = function (): void {
+    Route::get('/', Storefront::class)->name('shops.show');
+    Route::get('/checkout', function (string $shop) {
+        if (! auth()->check()) {
+            return redirect()->route('shops.checkout.login', ['shop' => $shop]);
+        }
+
+        $cart = Cart::query()
+            ->where('session_id', session()->getId())
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->with('items')
+            ->first();
+
+        if ($cart instanceof Cart) {
+            $orderId = app(ConvertCartToOrder::class)($cart, auth()->user());
+
+            if (is_string($orderId)) {
+                session()->put('checkout_order_id', $orderId);
             }
+        }
 
-            $cart = Cart::query()
-                ->where('session_id', session()->getId())
-                ->where('status', 'active')
-                ->where('expires_at', '>', now())
-                ->with('items')
-                ->first();
+        session()->put('checkout_user_id', auth()->id());
+        session()->put('checkout_user_access_expires_at', now()->addMinutes(max(1, (int) config('noma.customer_access_ttl_minutes', 3)))->timestamp);
 
-            if ($cart instanceof Cart) {
-                $orderId = app(ConvertCartToOrder::class)($cart, auth()->user());
+        return redirect()->route('shops.checkout.summary', ['shop' => $shop]);
+    })->name('shops.checkout');
+    Route::get('/checkout/login', CustomerCheckout::class)
+        ->defaults('mode', 'login')
+        ->name('shops.checkout.login');
+    Route::get('/checkout/register', CustomerCheckout::class)
+        ->defaults('mode', 'register')
+        ->name('shops.checkout.register');
+    Route::get('/checkout/summary', CheckoutSummaryController::class)->name('shops.checkout.summary');
+    Route::get('/auth/bridge/{user}', TenantSessionBridgeController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('shops.auth.bridge');
+};
 
-                if (is_string($orderId)) {
-                    session()->put('checkout_order_id', $orderId);
-                }
-            }
+if (config('noma.shop_url_mode') === 'path') {
+    Route::prefix('/shops/{shop}')
+        ->middleware('shop.tenant')
+        ->group($shopRoutes);
+} else {
+    Route::domain('{shop}.'.$centralHost)
+        ->middleware('shop.tenant')
+        ->group($shopRoutes);
 
-            session()->put('checkout_user_id', auth()->id());
-            session()->put('checkout_user_access_expires_at', now()->addMinutes(max(1, (int) config('noma.customer_access_ttl_minutes', 3)))->timestamp);
-
-            return redirect()->route('shops.checkout.summary', ['shop' => $shop]);
-        })->name('shops.checkout');
-        Route::get('/checkout/login', CustomerCheckout::class)
-            ->defaults('mode', 'login')
-            ->name('shops.checkout.login');
-        Route::get('/checkout/register', CustomerCheckout::class)
-            ->defaults('mode', 'register')
-            ->name('shops.checkout.register');
-        Route::get('/checkout/summary', CheckoutSummaryController::class)->name('shops.checkout.summary');
-        Route::get('/auth/bridge/{user}', TenantSessionBridgeController::class)
-            ->middleware(['signed', 'throttle:6,1'])
-            ->name('shops.auth.bridge');
-    });
-
-Route::get('/shops/{shop:slug}', fn (Shop $shop) => redirect()->away($shop->publicUrl()))
-    ->name('shops.legacy');
+    Route::get('/shops/{shop:slug}', fn (Shop $shop) => redirect()->away($shop->publicUrl()))
+        ->name('shops.legacy');
+}
 
 Route::get('/', function () {
     return view('welcome', [

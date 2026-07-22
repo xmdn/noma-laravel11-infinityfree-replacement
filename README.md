@@ -43,6 +43,8 @@ docker compose up --build
 
 With `APP_ENV=local` or `APP_ENV=development`, registration emails are auto-verified by default so Codespaces demos do not require opening Mailpit. Set `NOMA_AUTO_VERIFY_EMAILS=false` in `.env` to test the real verification email flow.
 
+Codespaces cannot serve arbitrary shop subdomains with a trusted certificate, so `NOMA_SHOP_URL_MODE=auto` uses path-based storefront URLs there, such as `/shops/example-shop`. Normal local and production environments keep subdomain storefront URLs.
+
 Application:
 
 ```text
