@@ -31,6 +31,41 @@ php artisan migrate --force
 php artisan db:seed --force
 ```
 
+## Docker / Codespaces
+
+The full Laravel application can be previewed from GitHub Codespaces or any Docker host:
+
+```bash
+cp .env.example .env
+# Edit the NOMA_DOCKER_* / NOMA_POSTGRES_* / NOMA_RABBITMQ_* values if needed.
+docker compose up --build
+```
+
+Application:
+
+```text
+http://localhost:8083
+```
+
+Mailpit:
+
+```text
+http://localhost:8025
+```
+
+RabbitMQ management:
+
+```text
+http://localhost:15672
+```
+
+The Compose stack includes the Laravel app, PostgreSQL, RabbitMQ, Mailpit, a Vite asset build container, and the queue worker. If an older `postgres-data` volume was created before the landlord database was added, recreate the database volume:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
 For local queue-backed email delivery, start RabbitMQ, Mailpit, and the worker:
 
 ```bash

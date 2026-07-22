@@ -3,6 +3,7 @@ config.php
 down
 events.scanned.php
 maintenance.php
+noma-docker-app-ready
 routes.php
 routes.scanned.php
 schedule-*

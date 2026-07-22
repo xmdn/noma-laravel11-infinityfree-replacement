@@ -1,13 +1,113 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: noma-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "${NOMA_APP_PORT}:8083"
+    networks:
+      - noma-internal
+    environment: &app-environment
+      APP_NAME: ${APP_NAME}
+      APP_ENV: ${APP_ENV}
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_URL: ${APP_URL}
+      DB_CONNECTION: ${DB_CONNECTION}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      LANDLORD_DB_HOST: ${LANDLORD_DB_HOST}
+      LANDLORD_DB_PORT: ${LANDLORD_DB_PORT}
+      LANDLORD_DB_DATABASE: ${LANDLORD_DB_DATABASE}
+      LANDLORD_DB_USERNAME: ${LANDLORD_DB_USERNAME}
+      LANDLORD_DB_PASSWORD: ${LANDLORD_DB_PASSWORD}
+      TENANT_DB_HOST: ${TENANT_DB_HOST}
+      TENANT_DB_PORT: ${TENANT_DB_PORT}
+      TENANT_DB_USERNAME: ${TENANT_DB_USERNAME}
+      TENANT_DB_PASSWORD: ${TENANT_DB_PASSWORD}
+      SESSION_DRIVER: ${SESSION_DRIVER}
+      CACHE_STORE: ${CACHE_STORE}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION}
+      MAIL_MAILER: ${MAIL_MAILER}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
+      RABBITMQ_WORKER: ${RABBITMQ_WORKER}
+    command:
+      - sh
+      - -lc
+      - |
+        mkdir -p storage/framework
+        rm -f storage/framework/noma-docker-app-ready
+        composer install --no-interaction --prefer-dist
+        php artisan config:clear
+        php artisan route:clear
+        php artisan view:clear
+        php artisan migrate --force
+        php artisan migrate --database=landlord --path=database/migrations/landlord --force
+        php artisan db:seed --force
+        touch storage/framework/noma-docker-app-ready
+        php artisan serve --host=0.0.0.0 --port=8083
+
+  assets:
+    image: node:22-bookworm-slim
+    container_name: noma-assets
+    working_dir: /app
+    volumes:
+      - ./:/app
+    networks:
+      - noma-internal
+    command: ["sh", "-lc", "npm ci && npm run build"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: noma-postgres
+    ports:
+      - "${NOMA_POSTGRES_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      LANDLORD_DB_DATABASE: ${LANDLORD_DB_DATABASE}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - noma-internal
+
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: noma-rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${NOMA_RABBITMQ_PORT}:5672"
+      - "${NOMA_RABBITMQ_MANAGEMENT_PORT}:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: noma
-      RABBITMQ_DEFAULT_PASS: noma
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -17,51 +117,51 @@ services:
     image: axllent/mailpit:v1.20
     container_name: noma-mailpit
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "${NOMA_MAILPIT_SMTP_PORT}:1025"
+      - "${NOMA_MAILPIT_UI_PORT}:8025"
     networks:
       - noma-internal
 
   queue-worker:
     build:
       context: .
-      dockerfile: docker/queue-worker/Dockerfile
+      dockerfile: docker/app/Dockerfile
     container_name: noma-queue-worker
     depends_on:
-      - rabbitmq
-      - mailpit
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      mailpit:
+        condition: service_started
+      app:
+        condition: service_started
     restart: unless-stopped
     working_dir: /app
     volumes:
       - ./:/app
     networks:
       - noma-internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
-      APP_ENV: local
-      APP_URL: http://localhost:8083
-      DB_HOST: host.docker.internal
-      DB_PORT: 5432
-      LANDLORD_DB_HOST: host.docker.internal
-      LANDLORD_DB_PORT: 5432
-      TENANT_DB_HOST: host.docker.internal
-      TENANT_DB_PORT: 5432
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: 1025
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: noma
-      RABBITMQ_PASSWORD: noma
-      RABBITMQ_VHOST: /
-      RABBITMQ_QUEUE: emails
-      RABBITMQ_WORKER: default
-    command: ["php", "artisan", "rabbitmq:consume", "rabbitmq", "--queue=emails"]
+      <<: *app-environment
+    command:
+      - sh
+      - -lc
+      - |
+        until [ -f vendor/autoload.php ]; do
+          echo "Waiting for Composer dependencies..."
+          sleep 2
+        done
+        until [ -f storage/framework/noma-docker-app-ready ]; do
+          echo "Waiting for application migrations..."
+          sleep 2
+        done
+        php artisan rabbitmq:queue-declare "$RABBITMQ_QUEUE" rabbitmq
+        php artisan rabbitmq:consume rabbitmq --queue="$RABBITMQ_QUEUE"
 
 volumes:
+  postgres-data:
   rabbitmq-data:
 networks:
   noma-internal:
     driver: bridge
-    
