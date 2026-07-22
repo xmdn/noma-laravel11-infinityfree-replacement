@@ -37,7 +37,7 @@ The full Laravel application can be previewed from GitHub Codespaces or any Dock
 
 ```bash
 cp .env.example .env
-# Edit the NOMA_DOCKER_* / NOMA_POSTGRES_* / NOMA_RABBITMQ_* values if needed.
+# Edit APP_*, DB_*, LANDLORD_DB_*, TENANT_DB_*, RABBITMQ_*, or exposed NOMA_* ports if needed.
 docker compose up --build
 ```
 

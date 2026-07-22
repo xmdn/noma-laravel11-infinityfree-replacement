@@ -57,7 +57,7 @@ services:
       - -lc
       - |
         mkdir -p storage/framework
-        rm -f storage/framework/noma-docker-app-ready
+        rm -f /tmp/noma-docker-app-ready
         composer install --no-interaction --prefer-dist
         php artisan config:clear
         php artisan route:clear
@@ -65,7 +65,7 @@ services:
         php artisan migrate --force
         php artisan migrate --database=landlord --path=database/migrations/landlord --force
         php artisan db:seed --force
-        touch storage/framework/noma-docker-app-ready
+        touch /tmp/noma-docker-app-ready
         php artisan serve --host=0.0.0.0 --port=8083
 
   assets:
@@ -152,7 +152,7 @@ services:
           echo "Waiting for Composer dependencies..."
           sleep 2
         done
-        until [ -f storage/framework/noma-docker-app-ready ]; do
+        until [ -f /tmp/noma-docker-app-ready ]; do
           echo "Waiting for application migrations..."
           sleep 2
         done
