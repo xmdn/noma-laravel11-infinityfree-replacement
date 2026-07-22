@@ -8,20 +8,15 @@ use Illuminate\Http\Request;
 
 final class DashboardController extends Controller
 {
-    // public function __invoke(Request $request): View
-    // {
-    //     return view('dashboard', [
-    //         'user' => $request->user()->load(['roles', 'shop', 'shopOnboarding']),
-    //     ]);
-    // }
-    public function __invoke(Request $request, DashboardViewFactory $views)
+    public function __invoke(Request $request, DashboardViewFactory $views): View
     {
+        $user = $request->user()->loadMissing(['roles.permissions', 'shop', 'shopOnboarding']);
+
         return $views->makeForUser(
-            $request->user()->loadMissing('roles.permissions'),
+            $user,
             'index',
             [
-                'user' => $request->user(),
-                // 'stats' => $this->getStats(),
+                'user' => $user,
             ],
         );
     }

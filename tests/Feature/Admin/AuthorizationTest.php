@@ -54,6 +54,20 @@ class AuthorizationTest extends TestCase
         $this->actingAs($administrator)->get(route('admin.users.index'))->assertOk();
     }
 
+    public function test_administrator_dashboard_uses_admin_view(): void
+    {
+        $administrator = User::factory()->create();
+        $administrator->roles()->attach($this->role(SystemRole::Administrator));
+
+        $this->actingAs($administrator)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Administration')
+            ->assertSee('USERS')
+            ->assertSee('SHOPS')
+            ->assertDontSee('Hello, '.$administrator->name);
+    }
+
     private function role(SystemRole $role): Role
     {
         return Role::query()->where('slug', $role->value)->firstOrFail();

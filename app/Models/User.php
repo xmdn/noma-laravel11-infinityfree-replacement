@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use App\Notifications\QueuedVerifyEmail;
 use App\Contracts\HasDashboardView;
+use App\Domain\Identity\PermissionName;
+use App\Domain\Identity\SystemRole;
+use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
@@ -14,8 +16,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-
-use App\Domain\Identity\SystemRole;
 
 class User extends Authenticatable implements MustVerifyEmailContract,  HasDashboardView
 {
@@ -30,6 +30,10 @@ class User extends Authenticatable implements MustVerifyEmailContract,  HasDashb
 
     public function getDashboardViewPrefix(): string
     {
+        if ($this->hasVerifiedEmail() && $this->hasPermission(PermissionName::AccessAdmin->value)) {
+            return 'admin';
+        }
+
         $roles = [
             SystemRole::Owner->value,
             SystemRole::Administrator->value,
