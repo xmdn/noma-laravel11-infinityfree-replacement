@@ -6,7 +6,6 @@ use App\Domain\Catalog\Product;
 use App\Domain\Catalog\ProductRepository;
 use App\Domain\Shared\Money;
 use App\Models\CatalogProduct;
-use App\Models\Shop;
 
 final class DatabaseProductRepository implements ProductRepository
 {
@@ -16,11 +15,7 @@ final class DatabaseProductRepository implements ProductRepository
             return [];
         }
 
-        $query = (Shop::checkCurrent() && ! app()->environment('testing'))
-            ? CatalogProduct::on('tenant')
-            : CatalogProduct::query();
-
-        return $query
+        return CatalogProduct::query()
             ->with('categories')
             ->where('shop_id', $shopId)
             ->where('status', 'active')
