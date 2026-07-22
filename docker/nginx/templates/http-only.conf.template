@@ -1,0 +1,96 @@
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+server {
+    listen 80;
+    server_name ${EMIT_APP_HOST};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://app:8083;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${EMIT_RABBITMQ_HOST};
+
+    auth_basic "NOMA admin";
+    auth_basic_user_file /etc/nginx/basic-auth/admin.htpasswd;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://rabbitmq:15672;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${EMIT_MAILPIT_HOST};
+
+    auth_basic "NOMA admin";
+    auth_basic_user_file /etc/nginx/basic-auth/admin.htpasswd;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://mailpit:8025;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${EMIT_DB_HOST};
+
+    auth_basic "NOMA admin";
+    auth_basic_user_file /etc/nginx/basic-auth/admin.htpasswd;
+
+    location /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://pgadmin:80;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+}

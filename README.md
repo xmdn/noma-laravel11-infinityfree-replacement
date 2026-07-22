@@ -63,7 +63,13 @@ RabbitMQ management:
 http://localhost:15672
 ```
 
-The Compose stack includes the Laravel app, PostgreSQL, RabbitMQ, Mailpit, a Vite asset build container, and the queue worker. If an older `postgres-data` volume was created before the landlord database was added, recreate the database volume:
+pgAdmin:
+
+```text
+http://localhost:5050
+```
+
+The Compose stack includes the Laravel app, PostgreSQL, RabbitMQ, Mailpit, pgAdmin, an nginx TLS reverse proxy, a Certbot renewal sidecar, a Vite asset build container, and the queue worker. Local service ports bind to `127.0.0.1` by default; nginx is the public entrypoint on ports 80 and 443. If an older `postgres-data` volume was created before the landlord database was added, recreate the database volume:
 
 ```bash
 docker compose down -v
@@ -83,6 +89,52 @@ http://localhost:8025
 ```
 
 To create or update the initial tenant administrator, set `NOMA_ADMIN_NAME`, `NOMA_ADMIN_EMAIL`, and `NOMA_ADMIN_PASSWORD` in the deployment environment before seeding. Do not commit those values.
+
+## nginx / Certbot
+
+For `emitapi.us.to`, point these DNS records at the Docker host before issuing certificates:
+
+```text
+emitapi.us.to
+rabbitmq.emitapi.us.to
+mailpit.emitapi.us.to
+db.emitapi.us.to
+```
+
+Set production values in `.env` before going public:
+
+```dotenv
+APP_URL=https://emitapi.us.to
+CERTBOT_EMAIL=admin@emitapi.us.to
+NOMA_PROXY_BASIC_AUTH_USER=noma-admin
+NOMA_PROXY_BASIC_AUTH_PASSWORD=replace-with-a-strong-password
+PGADMIN_DEFAULT_EMAIL=admin@emitapi.us.to
+PGADMIN_DEFAULT_PASSWORD=replace-with-a-strong-password
+```
+
+Start nginx on HTTP first so Let's Encrypt can complete the webroot challenge:
+
+```bash
+docker compose up -d --build nginx certbot
+```
+
+Issue the first certificate:
+
+```bash
+docker compose run --rm --entrypoint certbot certbot certonly --webroot --webroot-path /var/www/certbot --email admin@emitapi.us.to --agree-tos --no-eff-email --cert-name emitapi.us.to -d emitapi.us.to -d rabbitmq.emitapi.us.to -d mailpit.emitapi.us.to -d db.emitapi.us.to
+docker compose restart nginx
+```
+
+After nginx restarts, the public endpoints are:
+
+```text
+https://emitapi.us.to
+https://rabbitmq.emitapi.us.to
+https://mailpit.emitapi.us.to
+https://db.emitapi.us.to
+```
+
+RabbitMQ, Mailpit, and pgAdmin are additionally protected by nginx basic auth. pgAdmin connects to PostgreSQL with host `postgres`, port `5432`, and the `DB_USERNAME` / `DB_PASSWORD` values from `.env`.
 
 ## Quality
 
