@@ -2,6 +2,8 @@
 
 A production-minded Laravel 11.51 + Livewire 4.3 commerce experience. The customer-facing application is a curated design store; SOLID and design patterns live in the implementation rather than the content.
 
+Static GitHub Pages preview: https://xmdn.github.io/noma-laravel11-infinityfree-replacement/
+
 ## Architecture
 
 - `Domain` — immutable products and money, cart/catalog ports, promotion policies.
@@ -54,3 +56,13 @@ npm run build
 ## Free hosting
 
 The storefront is prepared for InfinityFree's no-card PHP 8.3 hosting. Composer dependencies and Vite assets are built locally, while file sessions, synchronous queues, and a root rewrite rule accommodate shared-hosting restrictions. See `DEPLOYMENT.md`.
+
+## GitHub Pages preview
+
+GitHub Pages can host only the static preview in `docs/`; it cannot execute the Laravel application, Livewire requests, migrations, authentication, sessions, queues, or database-backed storefront routes.
+
+This repository includes a GitHub Actions workflow at `.github/workflows/pages.yml`. After pushing it to GitHub, enable Pages with **Source: GitHub Actions** in the repository settings. The preview will deploy to:
+
+```text
+https://xmdn.github.io/noma-laravel11-infinityfree-replacement/
+```
