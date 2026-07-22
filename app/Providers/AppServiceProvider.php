@@ -36,8 +36,33 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Verified::class, ProvisionOwnerShopAfterVerification::class);
 
-        if ($this->app->environment('production')) {
+        $rootUrl = $this->applicationRootUrl();
+
+        if ($rootUrl !== null) {
+            $url->forceRootUrl($rootUrl);
+        }
+
+        if ($this->app->environment('production') || str_starts_with((string) $rootUrl, 'https://')) {
             $url->forceScheme('https');
         }
+    }
+
+    private function applicationRootUrl(): ?string
+    {
+        $configuredUrl = rtrim(trim((string) config('app.url')), '/');
+        $codespaceName = trim((string) env('CODESPACE_NAME'));
+        $codespacesDomain = trim((string) env('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN'), '/');
+        $appPort = trim((string) env('NOMA_APP_PORT', '8083'));
+
+        if (
+            $codespaceName !== ''
+            && $codespacesDomain !== ''
+            && $appPort !== ''
+            && ($configuredUrl === '' || str_starts_with($configuredUrl, 'http://localhost'))
+        ) {
+            return "https://{$codespaceName}-{$appPort}.{$codespacesDomain}";
+        }
+
+        return $configuredUrl !== '' ? $configuredUrl : null;
     }
 }
