@@ -41,6 +41,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
+With `APP_ENV=local` or `APP_ENV=development`, registration emails are auto-verified by default so Codespaces demos do not require opening Mailpit. Set `NOMA_AUTO_VERIFY_EMAILS=false` in `.env` to test the real verification email flow.
+
 Application:
 
 ```text

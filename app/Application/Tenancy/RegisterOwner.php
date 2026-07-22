@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\ShopOnboarding;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\DB;
 
 final class RegisterOwner
@@ -34,6 +35,10 @@ final class RegisterOwner
 
             return $user;
         });
+
+        if (config('noma.auto_verify_emails') && $user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
 
         event(new Registered($user));
 

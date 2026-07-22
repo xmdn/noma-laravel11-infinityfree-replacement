@@ -34,6 +34,10 @@ final class OwnerRegistrationController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
+        if ($user->hasVerifiedEmail()) {
+            return redirect()->route('dashboard');
+        }
+
         return redirect()->route('verification.notice');
     }
 }

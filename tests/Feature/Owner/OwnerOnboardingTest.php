@@ -55,6 +55,37 @@ class OwnerOnboardingTest extends TestCase
         Notification::assertSentTo($owner, QueuedVerifyEmail::class);
     }
 
+    public function test_business_owner_registration_can_auto_verify_and_provision_shop(): void
+    {
+        config(['noma.auto_verify_emails' => true]);
+        Notification::fake();
+
+        $this->post(route('owner.register'), [
+            'name' => 'Avery Stone',
+            'email' => 'avery@example.com',
+            'shop_name' => 'Still House',
+            'shop_slug' => 'Still House',
+            'password' => 'considered-password',
+            'password_confirmation' => 'considered-password',
+        ])->assertRedirect(route('dashboard'));
+
+        $owner = User::query()->where('email', 'avery@example.com')->firstOrFail();
+
+        $this->assertAuthenticatedAs($owner);
+        $this->assertTrue($owner->hasVerifiedEmail());
+        $this->assertNotNull($owner->shop_id);
+        $this->assertDatabaseHas('shops', [
+            'owner_id' => $owner->id,
+            'slug' => 'still-house',
+            'status' => 'active',
+        ]);
+        $this->assertDatabaseHas('shop_onboardings', [
+            'user_id' => $owner->id,
+            'status' => OnboardingStatus::Provisioned->value,
+        ]);
+        Notification::assertNotSentTo($owner, QueuedVerifyEmail::class);
+    }
+
     public function test_shop_is_created_only_after_owner_verifies_email(): void
     {
         Notification::fake();

@@ -22,6 +22,10 @@ final class RegisterUser
             return $user;
         });
 
+        if (config('noma.auto_verify_emails')) {
+            $user->markEmailAsVerified();
+        }
+
         event(new Registered($user));
 
         return $user;
